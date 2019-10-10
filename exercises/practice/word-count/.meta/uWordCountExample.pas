@@ -10,20 +10,21 @@ type
     function countWords: TDictionary<string, integer>;
   end;
 
-  TWordCount = class(TInterfacedObject, IWordCount)
-  private
-    FWords: string;
-    FWordDict: TDictionary<string, integer>;
-  public
-    constructor Create(aWords: string);
-    function countWords: TDictionary<string, integer>;
-  end;
-
 function WordCount(aWords: string): IWordCount;
 
 implementation
 
-uses Character, SysUtils, RegularExpressions;
+uses
+  Character, SysUtils, RegularExpressions;
+
+type
+  TWordCount = class(TInterfacedObject, IWordCount)
+  private
+    FWords: string;
+  public
+    constructor Create(aWords: string);
+    function countWords: TDictionary<string, integer>;
+  end;
 
 function WordCount(aWords: string): IWordCount;
 begin
@@ -34,43 +35,55 @@ constructor TWordCount.Create(aWords: string);
 begin
   inherited Create;
   FWords := aWords;
-  FWordDict := TDictionary<string, integer>.Create;
 end;
 
 function TWordCount.countWords: TDictionary<string, integer>;
 
-  function cleanWord(aWord: string): string;
+  function TryCleanWord(const aWord: string; out CleanWord: string): boolean;
   begin
-    result := aWord;
-    while not result[length(result)].IsLetterOrDigit and not result.IsEmpty do
-      result := result.Remove(length(result)-1);
+    CleanWord := aWord;
+    if CleanWord.Trim.IsEmpty then
+      exit(False);
+
+    var TargetChar := CleanWord.Chars[0];
+
+    if not TargetChar.IsLetterOrDigit and CleanWord.EndsWith(TargetChar) then
+    begin
+      CleanWord := CleanWord.Remove(0, 1);
+      CleanWord := CleanWord.Remove(length(CleanWord) - 1);
+    end;
+
+    while not CleanWord[length(CleanWord)].IsLetterOrDigit and not CleanWord.IsEmpty do
+      CleanWord := CleanWord.Remove(length(CleanWord) - 1);
+    Result := not CleanWord.IsEmpty;
   end;
 
 begin
+  Result := TDictionary<string, integer>.Create;
+
   // convert to lowercase and trim spaces
   FWords := FWords.ToLowerInvariant.Trim;
   // replace all separators with spaces
-  FWords := TRegEx.Replace(FWords, '(,|\\n|'' | ''|:)', ' ', [roNone]);
+  FWords := TRegEx.Replace(FWords, '(,|\\n|:)', ' ', [roNone]); //
   // get rid of extra characters
   FWords := TRegEx.Replace(FWords, '[^0-9a-z '']', '', [roNone]);
   // delete extra spaces
   FWords := TRegEx.Replace(FWords, '\s+', ' ', [roNone]);
   FWords := FWords.Trim;
   // replace all separators with spaces
-  FWords := TRegEx.Replace(FWords, '(,|\\n|'' | ''|:)', ' ', [roNone]);
+  FWords := TRegEx.Replace(FWords, '(,|\\n|:)', ' ', [roNone]); //
 
-  for var aWord in FWords.Split([' ']){sWords} do
+  for var aWord in FWords.Split([' ']) do
   begin
-    var wrkWord := cleanWord(aWord);
-    if wrkWord.IsEmpty then
-      continue;
-    if (not FWordDict.ContainsKey(wrkWord)) then
-      FWordDict.Add(wrkWord, 1)
-    else
-      FWordDict.Items[wrkWord] := FWordDict.Items[wrkWord] + 1;
+    var CleanedWord: string;
+    if TryCleanWord(aWord, CleanedWord) then
+    begin
+      if (not result.ContainsKey(CleanedWord)) then
+        result.Add(CleanedWord, 0);
+      result.Items[CleanedWord] := result.Items[CleanedWord] + 1;
+    end;
   end;
 
-  result := FWordDict;
 end;
 
 end.

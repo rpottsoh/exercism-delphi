@@ -5,7 +5,7 @@ uses
   System.Generics.Collections, DUnitX.TestFramework;
 
 const
-  CanonicalVersion = '1.3.0';
+  CanonicalVersion = '1.4.0';
 
 type
 
@@ -14,16 +14,12 @@ type
   private
     Expected,
     Actual: TDictionary<String, integer>;
-    procedure CompareDictionaries(Expected, Actual: TDictionary<String, integer>);
   public
     [Setup]
     procedure Setup;
 
     [TearDown]
     procedure TearDown;
-
-    [Test]
-    procedure Validate_CompareDictionaries;
 
     [Test]
 //    [Ignore('Comment the "[Ignore]" statement to run the test')]
@@ -72,45 +68,21 @@ type
     [Test]
     [Ignore]
     procedure Alternating_word_separators_not_detected_as_a_word;
+
+    [Test]
+    [Ignore]
+    procedure With_leading_apostrophes;
   end;
 
 implementation
 
 uses SysUtils, uWordCount;
 
-
-procedure WordCountTests.CompareDictionaries(Expected, Actual: TDictionary<String, Integer>);
-var
-  expectedPair: TPair<string, Integer>;
-begin
-  Assert.AreEqual(Expected.Count, Actual.Count,
-    '{Word counts should be equal}');
-  for expectedPair in Expected do
-  begin
-    Assert.IsTrue(Actual.ContainsKey(expectedPair.Key),
-      format('Actual doesn''t contain Expected "%s"',[expectedPair.Key]));
-    Assert.AreEqual(expectedPair.Value, Actual[expectedPair.Key],
-      format('{Expected %s: %d; Actual %s: %d}',
-        [expectedPair.Key,
-         expectedPair.Value,
-         expectedPair.Key,
-         Actual[expectedPair.Key]]));
+type
+  Assert = class(DUnitX.TestFramework.Assert)
+    class procedure AreEqual(expected, actual: TDictionary<string, integer>); overload;
   end;
-end;
 
-procedure WordCountTests.Validate_CompareDictionaries;
-begin
-  Expected.Add('r',5);
-  Expected.Add('a',10);
-  Expected.Add('n',15);
-  Expected.Add('d',20);
-  Expected.Add('o',25);
-  Expected.Add('m',30);
-
-  actual := TDictionary<String, Integer>.create(expected);
-
-  CompareDictionaries(Expected, Actual);
-end;
 
 procedure WordCountTests.Alternating_word_separators_not_detected_as_a_word;
 begin
@@ -120,7 +92,7 @@ begin
 
   Actual := WordCount(',\n,one,\n ,two \n ''three''').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Count_one_word;
@@ -129,7 +101,7 @@ begin
 
   Actual := WordCount('word').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Count_one_of_each_word;
@@ -140,7 +112,7 @@ begin
 
   Actual :=  WordCount('one of each').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Multiple_occurrences_of_a_word;
@@ -153,7 +125,7 @@ begin
 
   Actual := WordCount('one fish two fish red fish blue fish').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Handles_cramped_lists;
@@ -164,7 +136,7 @@ begin
 
   Actual := WordCount('one,two,three').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Handles_expanded_lists;
@@ -175,7 +147,7 @@ begin
 
   Actual := WordCount('one,\ntwo,\nthree').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Ignore_punctuation;
@@ -188,7 +160,7 @@ begin
 
   Actual := WordCount('car: carpet as java: javascript!!&@$%^&').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Include_numbers;
@@ -199,7 +171,7 @@ begin
 
   Actual := WordCount('testing, 1, 2 testing').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Normalize_case;
@@ -209,7 +181,7 @@ begin
 
   Actual := WordCount('go Go GO Stop stop').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Setup;
@@ -233,7 +205,20 @@ begin
 
   Actual := WordCount('First: don''t laugh. Then: don''t cry.').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
+end;
+
+procedure WordCountTests.With_leading_apostrophes;
+begin
+  Expected.Add('my',1);
+  Expected.Add('country',1);
+  Expected.Add('''tis',1);
+  Expected.Add('of',1);
+  Expected.Add('thee',1);
+
+  Actual := WordCount('My country ''tis of thee').countWords;
+
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.With_quotations;
@@ -247,7 +232,7 @@ begin
 
   Actual := WordCount('Joe can''t tell between ''large'' and large').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
 end;
 
 procedure WordCountTests.Multiple_spaces_not_detected_as_a_word;
@@ -257,7 +242,26 @@ begin
 
   Actual := WordCount(' multiple   whitespaces').countWords;
 
-  CompareDictionaries(Expected, Actual);
+  Assert.AreEqual(Expected, Actual);
+end;
+
+class procedure Assert.AreEqual(Expected, Actual: TDictionary<String, Integer>);
+var
+  expectedPair: TPair<string, Integer>;
+begin
+  Assert.AreEqual(Expected.Count, Actual.Count,
+    '{Word counts should be equal}');
+  for expectedPair in Expected do
+  begin
+    Assert.IsTrue(Actual.ContainsKey(expectedPair.Key),
+      format('Actual doesn''t contain Expected "%s"',[expectedPair.Key]));
+    Assert.AreEqual(expectedPair.Value, Actual[expectedPair.Key],
+      format('{Expected %s: %d; Actual %s: %d}',
+        [expectedPair.Key,
+         expectedPair.Value,
+         expectedPair.Key,
+         Actual[expectedPair.Key]]));
+  end;
 end;
 
 initialization
